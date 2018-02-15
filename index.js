@@ -76,7 +76,7 @@ async function validateConnections(
   return await inquirer.prompt(askConnections);
 }
 
-async function getAndValidateDomainAndToken() {
+async function getAndValidateConfig() {
   const questions = [
     {
       name: "domain",
@@ -94,35 +94,47 @@ async function getAndValidateDomainAndToken() {
     },
     {
       name: "token",
-      message: "Please enter management api token.",
+      message: "Please enter management api token with " + chalk.bold("create:clients, create:rules, create:resource_servers, create:client_grants, read:connections update:connection scopes."),
       validate: (token, answers) => {
         const claims = jwt_decode(token);
+        
         if (claims && claims.iss) {
           const parts = url.parse(claims.iss);
-          if (parts.host !== answers.auth0_domain) {
+          if (parts.host !== answers.domain) {
             return `Issuer (${
               parts.host
             }) of the token does not match the domain (${
-              answers.auth0_domain
+              answers.domain
             })`;
           }
         }
-        const requiredScopes = [
-          "create:clients",
-          "create:rules",
-          "create:resource_servers"
-        ];
-        const missingScopes = _.difference(
-          requiredScopes,
-          claims.scope.split(" ")
-        );
-        if (missingScopes.length > 0) {
-          console.log(claims.scope);
-          return `Required scopes missing ${missingScopes}`;
+
+        if (claims.scope) {
+          const requiredScopes = [
+            "create:clients",
+            "create:rules",
+            "create:resource_servers",
+            "create:client_grants",
+            "update:connections",
+            "read:connections"
+          ];
+          const missingScopes = _.difference(
+            requiredScopes,
+            claims.scope.split(" ")
+          );
+          if (missingScopes.length > 0) {
+            console.log(claims.scope);
+            return `Required scopes missing ${missingScopes}`;
+          }
         }
+
 
         return true;
       }
+    },
+    {
+      name: "portal_url",
+      message: "Please enter public url of the portal deployment."
     }
   ];
 
@@ -189,6 +201,12 @@ async function createPortalClient() {
   );
   const portal = {
     name: "Auth0 Self Service Portal",
+    callbacks: [
+      `${config.portal_url}/callback`
+    ],
+    jwt_configuration: {
+      alg: "RS256"
+    },
     custom_login_page: pageHtml,
     custom_login_page_on: true,
     app_type: "spa",
@@ -282,7 +300,8 @@ async function enableConnections(artefacts, selectedConnections) {
       enabled_clients: _.concat(c.enabled_clients, [
         artefacts.portal.client_id,
         artefacts.backend.client_id
-      ])
+      ]),
+      metadata: c.strategy==='ad' ? {username_field_name: "sAMAccountName"} : {}
     }
   }));
 
@@ -326,7 +345,7 @@ AUDIENCE=urn:self-service-portal-api
 async function runSetup() {
   console.log(chalk.white.bgGreen.bold("Self Service Portal Setup"));
   console.log("\r\n");
-  config = await getAndValidateDomainAndToken();
+  config = await getAndValidateConfig();
 
   console.log(chalk.green.bold("analysing tenant..."));
 
