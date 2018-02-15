@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Sign In with Auth0</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style  media="screen" type="text/css">
+   .custom-auth0-lock-header {
+     height:60px!important;
+   }
+   .custom-auth0-lock-firstname{
+     margin-top: 18px!important;
+    }
+    
+    #login-with-email{
+      background-color: #3b5998;
+    }
+    
+    #login-with-phone{
+      background-color: green;
+    }
+    
+    #login-with-email-code{
+      background-color: purple;
+    }
+    
+     .custom-social-button {
+     padding-left: 15px!important; 
+    }
+  </style>
+</head>
+<body> 
+  <script src="https://cdn.auth0.com/js/lock/10.17.0/lock.min.js"></script>
+  <script src="https://cdn.auth0.com/js/lock-passwordless-2.2.3.min.js"></script>
+  
+  <div id="auth0-lock-container-1" class="auth0-lock-container custom-selector">
+   <div class="auth0-lock auth0-lock-opened auth0-lock-with-tabs">
+      <div class="auth0-lock-overlay"></div>
+      <div class="auth0-lock-center">
+         <div class="auth0-lock-widget">
+             <div class="auth0-lock-widget-container">
+               <div class="auth0-lock-cred-pane auth0-lock-quiet">
+                  <div class="auth0-lock-header custom-auth0-lock-header">
+                     <div class="auth0-lock-header-welcome">
+                        <div class="auth0-lock-firstname custom-auth0-lock-firstname">Log in with</div>
+                     </div>
+                  </div>
+                  <div style="position: relative;">                   
+                    <div class="auth0-lock-view-content">
+                      <div class="auth0-lock-body-content">
+                        <div class="auth0-lock-content">
+                          <div class="auth0-lock-form">
+                            <div class="auth-lock-social-buttons-pane">
+                              <div class="auth0-lock-social-buttons-container">
+                                <button class="auth0-lock-social-button auth0-lock-social-big-button" id="login-with-email" type="button">
+
+                                  <div class="auth0-lock-social-button-text custom-social-button">Email / Username &amp; password</div>
+                                </button>
+                                <button class="auth0-lock-social-button auth0-lock-social-big-button" id="login-with-phone" type="button">
+
+                                  <div class="auth0-lock-social-button-text custom-social-button">Phone and code</div>
+                                </button>
+                                <button class="auth0-lock-social-button auth0-lock-social-big-button" id="login-with-email-code" type="button">
+
+                                  <div class="auth0-lock-social-button-text custom-social-button">Email and code</div>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+</div>
+
+  <!--[if IE 8]>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/ie8/0.2.5/ie8.js"></script>
+  <![endif]-->
+
+  <!--[if lte IE 9]>
+  <script src="https://cdn.auth0.com/js/base64.js"></script>
+  <script src="https://cdn.auth0.com/js/es5-shim.min.js"></script>
+  <![endif]-->
+  
+ 
+  <script type="text/javascript">
+    // Decode utf8 characters properly
+    var config = JSON.parse(decodeURIComponent(escape(window.atob('@@config@@'))));
+    config.extraParams = config.extraParams || {};
+    var connection = config.connection;
+    var prompt = config.prompt;
+    var languageDictionary;
+    var language;
+    
+    if (config.dict && config.dict.signin && config.dict.signin.title) {
+      languageDictionary = { title: config.dict.signin.title };
+    } else if (typeof config.dict === 'string') {
+      language = config.dict;
+    }
+    var loginHint = config.extraParams.login_hint;
+    
+    config.callbackOnLocationHash = true;
+    console.log('callbackOnLocationHash', config.callbackOnLocationHash);
+    
+    
+    var lock = new Auth0Lock(config.clientID, config.auth0Domain, {
+      auth: {
+        redirectUrl: config.callbackURL,
+        responseType: config.callbackOnLocationHash ? 'token' : 'code',
+        params: config.internalOptions
+      },
+      assetsUrl:  config.assetsUrl,
+      allowedConnections: connection ? [connection] : null,
+      rememberLastLogin: !prompt,
+      language: language,
+      languageDictionary: languageDictionary,
+      theme: {
+        //logo:            'YOUR LOGO HERE',
+        //primaryColor:    'green'
+      },
+      prefill: loginHint ? { email: loginHint, username: loginHint } : null,
+      closable: false,
+      // uncomment if you want small buttons for social providers
+      // socialButtonStyle: 'small'
+    });
+    var lockPasswordless = new Auth0LockPasswordless(config.clientID, config.auth0Domain);
+    
+    document.getElementById("login-with-email").addEventListener("click",  function()
+    {
+      lock.show();
+    });
+    document.getElementById("login-with-phone").addEventListener("click", function()
+    {
+      var smsOptions = { autoclose: false, closable: false, primaryColor: 'green', responseType: config.callbackOnLocationHash ? 'token' : 'code', callbackURL : config.callbackURL, authParams: config.internalOptions };
+       lockPasswordless.sms(smsOptions, function(error, profile, id_token, access_token, state) {
+        if (!error) {
+          //alert("Hi " + profile.name);
+        }
+       });
+    });
+    document.getElementById("login-with-email-code").addEventListener("click",  function()
+    {
+      var emailCodeOptions = { autoclose: false, closable: false, primaryColor: 'purple', responseType: config.callbackOnLocationHash ? 'token' : 'code', callbackURL : config.callbackURL, authParams: config.internalOptions  };
+      lockPasswordless.emailcode(emailCodeOptions, function(error, profile, id_token, access_token, state) {
+        if (!error) {
+          //alert("Hi " + profile.name);
+        }
+      });
+    });
+  </script>
+</body>
