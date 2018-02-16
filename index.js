@@ -9,7 +9,10 @@ const util = require("util");
 const os = require('os');
 const readFileAsync = util.promisify(require("fs").readFile);
 const writeFileAsync = util.promisify(require("fs").writeFile);
+const existsAync = util.promisify(require("fs").exists);
+
 const normalizeUrl = require('normalize-url');
+const validUrl = require('valid-url');
 
 
 function delay(timeout) {
@@ -102,8 +105,12 @@ async function getAndValidateConfig() {
       name: "token",
       message: "Please enter management api token with " + chalk.bold("create:clients, create:rules, create:resource_servers, create:client_grants, read:connections update:connection scopes."),
       default: async () => {
-         const data = await readFileAsync(path.join(__dirname, "token.txt"), "utf-8");
-         return data.trim();
+        const tokenFile = path.join(__dirname, "token.txt");
+        if (await existsAync(tokenFile)) {
+          const data = await readFileAsync(tokenFile, "utf-8");
+          return data.trim();
+        }
+        return undefined;
       },
       validate: (token, answers) => {
         const claims = jwt_decode(token);
@@ -141,6 +148,11 @@ async function getAndValidateConfig() {
     },
     {
       name: "portal_url",
+      validate: (url) => {
+        if (!validUrl.isWebUri(url))
+          return "Please enter a valid http(s) url.";
+        return true;
+      },
       message: "Please enter public url of the portal deployment."
     }
   ];
@@ -149,6 +161,19 @@ async function getAndValidateConfig() {
   answers.portal_url = normalizeUrl(answers.portal_url); // removing trailing slash
 
   return answers;
+}
+
+
+async function handleError(err, failedOperation) {
+  if (err.statusCode && err.statusCode===429) {
+    const DELAY_SECONDS = 5;
+    console.log(chalk.yellow.bold(`rate limited, waiting for ${DELAY_SECONDS}s before retyring..`));
+    await delay(DELAY_SECONDS*1000);
+    return failedOperation();
+  }
+  else {
+    console.log(chalk.red.bold(err.toString()));
+  }
 }
 
 async function createEntity(entity, payload) {
@@ -166,15 +191,7 @@ async function createEntity(entity, payload) {
     });
   } 
   catch (err) {
-    if (err.statusCode && err.statusCode===429) {
-      const DELAY_SECONDS = 5;
-
-      console.log(chalk.yellow.bold(`rate limited, waiting for ${DELAY_SECONDS}s before retyring..`));
-      
-      await delay(DELAY_SECONDS*1000);
-      return await createEntity(entity,payload);
-    }
-    console.log(chalk.red.bold(err.toString()));
+      return await handleError(err, ()=> createEntity(entity,payload) );
   }
 }
 
@@ -191,8 +208,8 @@ async function getEntity(entity, id) {
     });
 
     return JSON.parse(resp);
-  } catch (ex) {
-    console.log(chalk.red.bold(ex.toString()));
+  } catch (err) {
+    return await handleError(err, ()=> getEntity(entity,id) );
   }
 }
 
@@ -208,8 +225,8 @@ async function patchEntity(entity, id, payload) {
       },
       json: payload
     });
-  } catch (ex) {
-    console.log(chalk.red.bold(ex.toString()));
+  } catch (err) {
+    return await handleError(err, ()=> patchEntity(entity,id,payload) );
   }
 }
 
@@ -329,6 +346,7 @@ async function enableConnections(artefacts, selectedConnections) {
 async function createArtefacts() {
   const artefacts = [
     createPortalClient,
+    createBackendClient,
     createBackendAPI,
     createRule
   ].map(f => f());
