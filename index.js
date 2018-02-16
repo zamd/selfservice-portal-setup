@@ -92,46 +92,46 @@ async function getAndValidateConfig() {
         }
       }
     },
-    {
-      name: "token",
-      message: "Please enter management api token with " + chalk.bold("create:clients, create:rules, create:resource_servers, create:client_grants, read:connections update:connection scopes."),
-      validate: (token, answers) => {
-        const claims = jwt_decode(token);
+    // {
+    //   name: "token",
+    //   message: "Please enter management api token with " + chalk.bold("create:clients, create:rules, create:resource_servers, create:client_grants, read:connections update:connection scopes."),
+    //   validate: (token, answers) => {
+    //     const claims = jwt_decode(token);
         
-        if (claims && claims.iss) {
-          const parts = url.parse(claims.iss);
-          if (parts.host !== answers.domain) {
-            return `Issuer (${
-              parts.host
-            }) of the token does not match the domain (${
-              answers.domain
-            })`;
-          }
-        }
+    //     if (claims && claims.iss) {
+    //       const parts = url.parse(claims.iss);
+    //       if (parts.host !== answers.domain) {
+    //         return `Issuer (${
+    //           parts.host
+    //         }) of the token does not match the domain (${
+    //           answers.domain
+    //         })`;
+    //       }
+    //     }
 
-        if (claims.scope) {
-          const requiredScopes = [
-            "create:clients",
-            "create:rules",
-            "create:resource_servers",
-            "create:client_grants",
-            "update:connections",
-            "read:connections"
-          ];
-          const missingScopes = _.difference(
-            requiredScopes,
-            claims.scope.split(" ")
-          );
-          if (missingScopes.length > 0) {
-            console.log(claims.scope);
-            return `Required scopes missing ${missingScopes}`;
-          }
-        }
+    //     if (claims.scope) {
+    //       const requiredScopes = [
+    //         "create:clients",
+    //         "create:rules",
+    //         "create:resource_servers",
+    //         "create:client_grants",
+    //         "update:connections",
+    //         "read:connections"
+    //       ];
+    //       const missingScopes = _.difference(
+    //         requiredScopes,
+    //         claims.scope.split(" ")
+    //       );
+    //       if (missingScopes.length > 0) {
+    //         console.log(claims.scope);
+    //         return `Required scopes missing ${missingScopes}`;
+    //       }
+    //     }
 
 
-        return true;
-      }
-    },
+    //     return true;
+    //   }
+    // },
     {
       name: "portal_url",
       message: "Please enter public url of the portal deployment."
@@ -346,6 +346,7 @@ async function runSetup() {
   console.log(chalk.white.bgGreen.bold("Self Service Portal Setup"));
   console.log("\r\n");
   config = await getAndValidateConfig();
+  config.token = await readFileAsync(path.join(__dirname,'token.txt'),'utf-8');
 
   console.log(chalk.green.bold("analysing tenant..."));
 
