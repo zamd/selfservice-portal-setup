@@ -6,9 +6,15 @@ const url = require("url");
 const _ = require("lodash");
 const chalk = require("chalk");
 const util = require("util");
+const os = require('os');
 const readFileAsync = util.promisify(require("fs").readFile);
 const writeFileAsync = util.promisify(require("fs").writeFile);
+const normalizeUrl = require('normalize-url');
 
+
+function delay(timeout) {
+  return new Promise((resolve)=>setTimeout(()=>resolve(),timeout));
+}
 async function findConnections(strategy) {
   const baseUrl = "https://" + path.join(config.domain, "api/v2");
 
@@ -92,53 +98,57 @@ async function getAndValidateConfig() {
         }
       }
     },
-    // {
-    //   name: "token",
-    //   message: "Please enter management api token with " + chalk.bold("create:clients, create:rules, create:resource_servers, create:client_grants, read:connections update:connection scopes."),
-    //   validate: (token, answers) => {
-    //     const claims = jwt_decode(token);
-        
-    //     if (claims && claims.iss) {
-    //       const parts = url.parse(claims.iss);
-    //       if (parts.host !== answers.domain) {
-    //         return `Issuer (${
-    //           parts.host
-    //         }) of the token does not match the domain (${
-    //           answers.domain
-    //         })`;
-    //       }
-    //     }
+    {
+      name: "token",
+      message: "Please enter management api token with " + chalk.bold("create:clients, create:rules, create:resource_servers, create:client_grants, read:connections update:connection scopes."),
+      default: async () => {
+         const data = await readFileAsync(path.join(__dirname, "token.txt"), "utf-8");
+         return data.trim();
+      },
+      validate: (token, answers) => {
+        const claims = jwt_decode(token);
 
-    //     if (claims.scope) {
-    //       const requiredScopes = [
-    //         "create:clients",
-    //         "create:rules",
-    //         "create:resource_servers",
-    //         "create:client_grants",
-    //         "update:connections",
-    //         "read:connections"
-    //       ];
-    //       const missingScopes = _.difference(
-    //         requiredScopes,
-    //         claims.scope.split(" ")
-    //       );
-    //       if (missingScopes.length > 0) {
-    //         console.log(claims.scope);
-    //         return `Required scopes missing ${missingScopes}`;
-    //       }
-    //     }
+        if (claims && claims.iss) {
+          const parts = url.parse(claims.iss);
+          if (parts.host !== answers.domain) {
+            return `Issuer (${
+              parts.host
+            }) of the token does not match the domain (${answers.domain})`;
+          }
+        }
 
+        if (claims.scope) {
+          const requiredScopes = [
+            "create:clients",
+            "create:rules",
+            "create:resource_servers",
+            "create:client_grants",
+            "update:connections",
+            "read:connections"
+          ];
+          const missingScopes = _.difference(
+            requiredScopes,
+            claims.scope.split(" ")
+          );
+          if (missingScopes.length > 0) {
+            console.log(claims.scope);
+            return `Required scopes missing ${missingScopes}`;
+          }
+        }
 
-    //     return true;
-    //   }
-    // },
+        return true;
+      }
+    },
     {
       name: "portal_url",
       message: "Please enter public url of the portal deployment."
     }
   ];
 
-  return await inquirer.prompt(questions);
+  const answers =  await inquirer.prompt(questions);
+  answers.portal_url = normalizeUrl(answers.portal_url); // removing trailing slash
+
+  return answers;
 }
 
 async function createEntity(entity, payload) {
@@ -154,8 +164,17 @@ async function createEntity(entity, payload) {
       },
       json: payload
     });
-  } catch (ex) {
-    console.log(chalk.red.bold(ex.toString()));
+  } 
+  catch (err) {
+    if (err.statusCode && err.statusCode===429) {
+      const DELAY_SECONDS = 5;
+
+      console.log(chalk.yellow.bold(`rate limited, waiting for ${DELAY_SECONDS}s before retyring..`));
+      
+      await delay(DELAY_SECONDS*1000);
+      return await createEntity(entity,payload);
+    }
+    console.log(chalk.red.bold(err.toString()));
   }
 }
 
@@ -201,9 +220,7 @@ async function createPortalClient() {
   );
   const portal = {
     name: "Auth0 Self Service Portal",
-    callbacks: [
-      `${config.portal_url}/callback`
-    ],
+    callbacks: [`${config.portal_url}/callback`],
     jwt_configuration: {
       alg: "RS256"
     },
@@ -301,7 +318,7 @@ async function enableConnections(artefacts, selectedConnections) {
         artefacts.portal.client_id,
         artefacts.backend.client_id
       ]),
-      metadata: c.strategy==='ad' ? {username_field_name: "sAMAccountName"} : {}
+      metadata: c.strategy === "ad" ? { username_field_name: "sAMAccountName" } : {}
     }
   }));
 
@@ -312,7 +329,6 @@ async function enableConnections(artefacts, selectedConnections) {
 async function createArtefacts() {
   const artefacts = [
     createPortalClient,
-    createBackendClient,
     createBackendAPI,
     createRule
   ].map(f => f());
@@ -344,9 +360,9 @@ AUDIENCE=urn:self-service-portal-api
 }
 async function runSetup() {
   console.log(chalk.white.bgGreen.bold("Self Service Portal Setup"));
-  console.log("\r\n");
+  console.log(os.EOL);
+
   config = await getAndValidateConfig();
-  config.token = await readFileAsync(path.join(__dirname,'token.txt'),'utf-8');
 
   console.log(chalk.green.bold("analysing tenant..."));
 
