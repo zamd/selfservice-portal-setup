@@ -236,7 +236,7 @@ async function createPortalClient() {
     "utf-8"
   );
   const portal = {
-    name: "Auth0 Self Service Portal",
+    name: "Self Service Portal",
     callbacks: [`${config.portal_url}/callback`],
     jwt_configuration: {
       alg: "RS256"
@@ -251,7 +251,7 @@ async function createPortalClient() {
 
 function createBackendClient() {
   const backend = {
-    name: "Auth0 Self Service Backend",
+    name: "Self Service Backend",
     app_type: "non_interactive",
     grant_types: [
       "client_credentials",
@@ -265,7 +265,7 @@ function createBackendClient() {
 
 function createBackendAPI() {
   const api = {
-    name: "Auth0 Self Service API",
+    name: "Self Service API",
     identifier: "urn:self-service-portal-api",
     scopes: [
       {
@@ -304,7 +304,7 @@ async function createRule() {
   );
 
   const api = {
-    name: "Auth0 Self Service Issue Scopes",
+    name: "Self Service Issue Scopes",
     script: ruleCode,
     enabled: true
   };
