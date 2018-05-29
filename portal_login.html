@@ -41,11 +41,18 @@
          <div class="auth0-lock-widget">
              <div class="auth0-lock-widget-container">
                <div class="auth0-lock-cred-pane auth0-lock-quiet">
-                  <div class="auth0-lock-header custom-auth0-lock-header">
-                     <div class="auth0-lock-header-welcome">
-                        <div class="auth0-lock-firstname custom-auth0-lock-firstname">Log in with</div>
-                     </div>
-                  </div>
+                  <div class="auth0-lock-header">
+                    <div class="auth0-lock-header-bg auth0-lock-blur-support">
+                      <div class="auth0-lock-header-bg-blur" style="background-image: url(&quot;//cdn.auth0.com/styleguide/components/1.0.8/media/logos/img/badge.png&quot;);">
+                      </div>
+                      <div class="auth0-lock-header-bg-solid" style="background-color: rgb(234, 83, 35);">
+                      </div>
+                    </div>
+                    <div class="auth0-lock-header-welcome">
+                      <img class="auth0-lock-header-logo" src="https://d1zfhhet7607j6.cloudfront.net/static/sdl-id/preprod/SDL-ID-logo.png">
+                      <div class="auth0-lock-name" title="Default App">Log in with</div>
+                    </div>
+                 </div>
                   <div style="position: relative;">                   
                     <div class="auth0-lock-view-content">
                       <div class="auth0-lock-body-content">
@@ -55,16 +62,22 @@
                               <div class="auth0-lock-social-buttons-container">
                                 <button class="auth0-lock-social-button auth0-lock-social-big-button" id="login-with-email" type="button">
 
-                                  <div class="auth0-lock-social-button-text custom-social-button">Email / Username &amp; password</div>
+                                  <div class="auth0-lock-social-button-text custom-social-button">Email / Username &amp; password </div>
+                                  <p><span>Last time you logged in with</span></p>
+                                  
                                 </button>
+                                <p style="line-height: 1.2; margin-top: 3px; text-align: left;"><span style="/* line-height: 0.2 !important; */">Use this option when setting up your account for password reset</span></p>
                                 <button class="auth0-lock-social-button auth0-lock-social-big-button" id="login-with-phone" type="button">
 
                                   <div class="auth0-lock-social-button-text custom-social-button">Phone and code</div>
                                 </button>
+                                <p style="line-height: 1.2; margin-top: 3px; text-align: left;"><span style="/* line-height: 0.2 !important; */">Send a password reset code to your phone</span></p>
+                                
                                 <button class="auth0-lock-social-button auth0-lock-social-big-button" id="login-with-email-code" type="button">
 
                                   <div class="auth0-lock-social-button-text custom-social-button">Email and code</div>
                                 </button>
+                                <p style="line-height: 1.2; margin-top: 3px; text-align: left;"><span style="/* line-height: 0.2 !important; */">Send a password reset code to your personal email address</span></p>
                               </div>
                             </div>
                           </div>
@@ -121,7 +134,7 @@
       language: language,
       languageDictionary: languageDictionary,
       theme: {
-        //logo:            'YOUR LOGO HERE',
+        logo:            'https://d1zfhhet7607j6.cloudfront.net/static/sdl-id/preprod/SDL-ID-logo.png',
         //primaryColor:    'green'
       },
       prefill: loginHint ? { email: loginHint, username: loginHint } : null,
@@ -139,6 +152,10 @@
     {
       var smsOptions = { autoclose: false, closable: false, primaryColor: 'green', responseType: config.callbackOnLocationHash ? 'token' : 'code', callbackURL : config.callbackURL, authParams: config.internalOptions };
        lockPasswordless.sms(smsOptions, function(error, profile, id_token, access_token, state) {
+        console.log('profile', profile);
+        console.log('id_token', id_token);
+        console.log('access_token', access_token);
+        console.log('state', state);
         if (!error) {
           //alert("Hi " + profile.name);
         }
@@ -148,6 +165,10 @@
     {
       var emailCodeOptions = { autoclose: false, closable: false, primaryColor: 'purple', responseType: config.callbackOnLocationHash ? 'token' : 'code', callbackURL : config.callbackURL, authParams: config.internalOptions  };
       lockPasswordless.emailcode(emailCodeOptions, function(error, profile, id_token, access_token, state) {
+        console.log('profile', profile);
+        console.log('id_token', id_token);
+        console.log('access_token', access_token);
+        console.log('state', state);
         if (!error) {
           //alert("Hi " + profile.name);
         }
@@ -155,3 +176,4 @@
     });
   </script>
 </body>
+</html>
